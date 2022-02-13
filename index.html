@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8" />
+    <title>Chinese Sentence Flash</title>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <!-- Slowly compiles JSX with Babel in the browser - not meant for production code -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style media="screen">
+	    html,body {margin:0;padding:0;color:black;font-family:sans-serif;}
+      body {height:100%;background:Cornsilk;}
+      #main {margin:1em auto;padding:1em;background:white;width:80em;max-width:95%;
+        box-sizing:border-box;border-radius:2em;box-shadow:IndianRed 0px 0px 16px -8px;}
+      #timeBar {box-sizing:border-box;width:64em;max-width:95%;margin:1em auto;height:8px;
+        background-color:FloralWhite;}
+      #timeBarInner {box-sizing:border-box;height:100%;width:0%;padding:0;line-height:8px;text-align:right;
+        background-color:IndianRed;}
+      #sentenceBox {margin:0 auto;text-align:center;}
+      #sentenceBox p {font-size:200%;margin:1em;}
+      #settingsPanel {margin:0 auto;text-align:center;display:flex;flex-wrap:wrap;
+        justify-content:center;align-items:center;}
+      fieldset {text-align:left;margin:1em;padding:1em;border-radius:1em;border:3px Ivory solid;
+        background:Ivory;}
+      fieldset div {margin:0.5em;}
+      legend {color:IndianRed;}
+      label {margin-left:0.5em;}
+      input {filter:grayscale(1);}
+      #attribution {margin:2em auto;color:IndianRed;text-align:center;}
+      a {color:IndianRed;}
+	  </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      class GameCard extends React.Component {
+        constructor(props) {
+          super(props);
+          this.state = {
+            sentence: {
+              level: "a1",
+              hanzi: "我 没有 问题。 ",
+              pinyin: "Wǒ méiyǒu wèntí.",
+              english: "I don't have any questions."
+            },
+            progression: 0,
+            options: {
+              levels: [
+                {name: 'a1', label: 'A1', checked: true},
+                {name: 'a2', label: 'A2', checked: true},
+                {name: 'b1', label: 'B1', checked: false},
+                {name: 'b2', label: 'B2', checked: false},
+              ],
+              display: [
+                {checkboxName: 'hanziCheckbox', label: 'Chinese characters', checked: true},
+                {checkboxName: 'spacesCheckbox', label: 'Spaces between Chinese words', checked: true},
+                {checkboxName: 'pinyinCheckbox', label: 'Phonetic transcription (Pinyin)', checked: true},
+                {checkboxName: 'englishCheckbox', label: 'English translation', checked: true},
+              ]
+            }
+          };
+        }
+
+        componentDidMount() {
+          this.setState({sentence: this.getNewSentence()});
+          this.timerID = setInterval(
+            () => this.tick(),
+            50
+          );
+        }
+
+        componentWillUnmount() {
+          clearInterval(this.timerID);
+        }
+
+        getNewSentence() {
+          let acceptableLevels = []
+          for (const level of this.state.options.levels) { 
+            if (level.checked) {
+              acceptableLevels.push(level.name)
+            }
+          }
+          /* if no level option is checked, just pick the first one automatically */
+          if (acceptableLevels.length === 0) {
+            this.handleLevelsChange(0);
+            acceptableLevels.push(this.state.options.levels[0].name);
+          }
+          /* get random sentences from total sentence pool until you find one that fits one of the checked levels */
+          let lookingForSentence = true
+          while (lookingForSentence) {
+            const sentence = this.props.sentences[Math.floor(Math.random() * this.props.sentences.length)];
+            if (acceptableLevels.includes(sentence.level)) {
+              return this.applyDisplayOptions(sentence);
+            }
+          }
+        }
+
+        applyDisplayOptions(sentence) {
+          const displayOptions = this.state.options.display;
+          if (!displayOptions[0].checked) {
+            sentence.hanzi = ""
+          }
+          if (!displayOptions[1].checked) {
+            sentence.hanzi = sentence.hanzi.replaceAll(" ", "");
+          }
+          if (!displayOptions[2].checked) {
+            sentence.pinyin = ""
+          }
+          if (!displayOptions[3].checked) {
+            sentence.english = ""
+          }
+          return sentence;
+        }
+
+        tick() {
+          this.setState(function(state) {
+            let newProgression = 0;
+            if (state.progression < 100) {
+              newProgression = state.progression += 1;
+            }
+            return {progression: newProgression};
+          });
+          if (this.state.progression === 100) {
+            this.setState({sentence: this.getNewSentence()});
+          }
+        }
+
+        handleLevelsChange(index) {
+          this.setState(function(state) {
+          /* get current state of option and update it to be the opposite */
+            const currentCheckedState = state.options.levels[index].checked;
+            let newOptions = state.options;
+            newOptions.levels[index].checked = !currentCheckedState;
+            return {options: newOptions};
+          });
+        }
+
+        handleDisplayChange(index) {
+          this.setState(function(state) {
+          /* get current state of option and update it to be the opposite */
+            const currentCheckedState = state.options.display[index].checked;
+            let newOptions = state.options;
+            newOptions.display[index].checked = !currentCheckedState;
+            return {options: newOptions};
+          });
+        }
+
+        render() {
+          return (
+            <div id="main">
+              <div id="timeBar">
+                <div id="timeBarInner" style={{width: this.state.progression + "%"}}></div>
+              </div>
+              <div id="sentenceBox">
+                <p>{this.state.sentence.hanzi}</p>
+                <p>{this.state.sentence.pinyin}</p>
+                <p>{this.state.sentence.english}</p>
+              </div>
+              <div id="settingsPanel">
+                <fieldset>
+                  <legend>Proficiency levels</legend>
+                  {this.state.options.levels.map((level, index) => (
+                    <div key={index}>
+                      <input type="checkbox" id={level.name} defaultChecked={level.checked}
+                        onChange={() => this.handleLevelsChange(index)} />
+                      <label htmlFor={level.name}>{level.label}</label><br />
+                    </div>
+                  ))}
+                </fieldset>
+                <fieldset>
+                  <legend>Display options</legend>
+                  {this.state.options.display.map((displayOption, index) => (
+                    <div key={index}>
+                      <input type="checkbox" id={displayOption.checkboxName} defaultChecked={displayOption.checked}
+                        onChange={() => this.handleDisplayChange(index)} />
+                      <label htmlFor={displayOption.checkboxName}>{displayOption.label}</label><br />
+                    </div>
+                  ))}
+                </fieldset>
+              </div>
+            </div>
+          );
+        }
+      }
+
+      function App(props) {
+        return (
+          <div>
+            <GameCard sentences={props.sentences}/>
+            <div id="attribution">
+              <p>Built with sentences from <a href="https://resources.allsetlearning.com/chinese/grammar/" target="_blank" rel="noopener noreferrer">AllSet Learning Chinese Grammar Wiki</a>.</p>
+            </div>
+          </div>
+        );
+      }
+
+      fetch('sentences.json')
+        .then(response => response.json())
+        .then(data => {
+          ReactDOM.render(<App sentences={data} />, document.getElementById('root'));
+        });
+
+    </script>
+  </body>
+</html>
